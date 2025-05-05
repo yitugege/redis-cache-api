@@ -69,7 +69,7 @@ register_activation_hook(__FILE__, function() {
     global $wpdb;
     $charset_collate = $wpdb->get_charset_collate();
     
-    $table_name = $wpdb->prefix . 'redis_cache_logs';
+    $table_name = $wpdb->prefix . 'redis_cache_api_logs';
     $sql = "CREATE TABLE IF NOT EXISTS $table_name (
         id bigint(20) NOT NULL AUTO_INCREMENT,
         cache_key varchar(255) NOT NULL,
@@ -84,3 +84,13 @@ register_activation_hook(__FILE__, function() {
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);
 });
+
+// 插件卸载时的操作
+register_uninstall_hook(__FILE__, 'redis_cache_api_uninstall');
+
+function redis_cache_api_uninstall() {
+    // 删除数据库表
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'redis_cache_api_logs';
+    $wpdb->query("DROP TABLE IF EXISTS $table_name");
+}
