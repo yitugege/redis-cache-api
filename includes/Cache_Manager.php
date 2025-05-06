@@ -5,7 +5,6 @@ namespace Redis_Cache_API;
  * 缓存管理类
  * 用于管理缓存相关的操作
  * 缓存组:products
- * 缓存版本：1->2->3->4->5->6->7->8->9->10
  * 缓存键：/wc/v3/products
  * 缓存时间：1小时
  */
@@ -31,6 +30,10 @@ class Cache_Manager {
         add_action('woocommerce_update_product_variation', array($this, 'clear_product_cache'), 10, 1);
         // 在POST API成功后清除产品列表缓存
         add_action('woocommerce_rest_insert_product_object', array($this, 'clear_products_list_cache'), 20, 1);
+        //在订单更新后清除订单缓存
+        add_action('woocommerce_order_status_changed', array($this, 'clear_order_cache_list_cache'), 20, 1);
+        //在订单创建后清除订单缓存
+       // add_action('woocommerce_rest_insert_order_object', array($this, 'clear_order_cache'), 20, 1);
     }
 
     /**
@@ -51,8 +54,8 @@ class Cache_Manager {
      * @return mixed 缓存结果或原始结果
      */
     public function check_cache($result, $server, $request) {
-        // 只缓存GET请求
-        if ($request->get_method() !== 'GET') {
+        // 只缓存GET请求和路由以/wc/v3/products开头的请求
+        if(!$this->is_route_cache_api($request) || $request->get_method() !== 'GET'){
             return $result;
         }
          
@@ -77,10 +80,11 @@ class Cache_Manager {
      * @return mixed 响应结果
      */
     public function save_cache($response, $server, $request) {
-        // 只缓存GET请求
-        if ($request->get_method() !== 'GET') {
+
+        if(!$this->is_route_cache_api($request) || $request->get_method() !== 'GET'){
             return $response;
         }
+       
         
         $cache_key = $this->generate_cache_key($request);
         $cache_group = $this->get_cache_group($request);
@@ -137,11 +141,36 @@ class Cache_Manager {
         return $response;
     }
 
+    //定义api路由,用于判断是否需要缓存
+    /**
+     * 判断API路由是否需要缓存
+     * 
+     * 检查请求的路由是否需要进行缓存处理
+     * 目前支持缓存的路由:
+     * - /wc/v3/products/* - 产品相关API
+     * - /wc/v3/orders/* - 订单相关API
+     * 
+     * @param object $request WP_REST_Request对象
+     * @return bool 如果路由需要缓存返回true,否则返回false
+     */
+    private function is_route_cache_api($request){
+        $route = $request->get_route();
+        if(strpos($route, '/wc/v3/products') !== false){
+            return true;
+        }
+        else if(strpos($route, '/wc/v3/orders') !== false){
+            return true;
+        }
+        else{
+            return false;
+        }
+    }
+
     /**
      * 清除产品缓存
-     * @param object $product 产品对象
-     * @param object $request 请求对象
-     * @param bool $creating 是否为创建
+     * @param object $produc_id 产品ID
+     * 
+     * 
      */
     public function clear_product_cache($product_id) {
      
@@ -190,6 +219,21 @@ class Cache_Manager {
     }
 
     /**
+     * 清除订单列表缓存
+     * @param int $order_id 订单ID
+     * 
+     * 
+     */
+    function clear_order_cache_list_cache($order_id){
+      
+    
+        $key = '/wc/v3/orders/'.$order_id;
+        $this->clear_key_cache($key, $this->cache_group_orders, $order_id);
+      
+    }
+
+
+    /**
      * 获取缓存组
      * @param object $request 请求对象
      * @return string 缓存组
@@ -213,12 +257,14 @@ class Cache_Manager {
      * @param string $key 缓存键
      * @param string $group 缓存组
      * @param int $product_id 产品ID
+     * 1.删除指定的缓存键
+     * 2.获取缓存索引,如果缓存索引不存在,则返回,操作索引缓存里面的id和传递的id进行对比,如果匹配,则删除缓存
      */
     private function clear_key_cache($key, $group, $product_id) {
         // 删除指定的缓存键
         wp_cache_delete($key, $group);
-        
-        // 获取缓存索引
+    
+        // 获取缓存索引,如果缓存索引不存在,则返回,操作索引缓存里面的id和传递的id进行对比,如果匹配,则删除缓存
         $cached_index = wp_cache_get('index', $group);
         if($cached_index === false) {
             return;
