@@ -12,8 +12,8 @@
 
 ## 安装要求
 
-- WordPress 5.0 或更高版本
-- PHP 7.2 或更高版本
+- WordPress 6.0 或更高版本
+- PHP 8.2 或更高版本
 - Redis 扩展
 - WooCommerce 插件
 
