@@ -12,7 +12,8 @@ namespace Redis_Cache_API;
 class Cache_Manager {
   
     private $default_expiration = 3600; // 默认缓存时间1小时
-    private $cache_group = 'cache_redis_api';
+    private $cache_group_products = 'cache_redis_api_products';
+    private $cache_group_orders = 'cache_redis_api_orders';
 
     /**
      * 初始化缓存管理器
@@ -39,10 +40,7 @@ class Cache_Manager {
         add_filter('rest_pre_dispatch', array($this, 'check_cache'), 10, 3);
         // 在API响应后保存缓存
         add_filter('rest_post_dispatch', array($this, 'save_cache'), 10, 3);
-
     }
-
-
 
     /**
      * 检查缓存
@@ -64,13 +62,9 @@ class Cache_Manager {
         $cached_data = wp_cache_get($cache_key, $cache_group);
         
         if ($cached_data !== false) {
-            // 记录缓存命中
-            $this->log_cache_action($cache_key, $cache_group, 'hit');
             return $cached_data;
         }
         
-        // 记录缓存未命中
-        $this->log_cache_action($cache_key, $cache_group, 'miss');
         return $result;
     }
 
@@ -100,12 +94,8 @@ class Cache_Manager {
         // 设置缓存
         wp_cache_set($cache_key, $cache_data, $cache_group, $this->default_expiration);
         
-        // 记录缓存设置
-        $this->log_cache_action($cache_key, $cache_group, 'set');
         return $response;
     }
-
-  
 
     /**
      * 清除产品缓存
@@ -114,7 +104,6 @@ class Cache_Manager {
      * @param bool $creating 是否为创建
      */
     public function clear_product_cache($product_id) {
-
         // 判断产品类型
         $product = wc_get_product($product_id);
         if($product->is_type('variable')) {
@@ -122,40 +111,25 @@ class Cache_Manager {
             $variations = $product->get_children();
             foreach($variations as $variation_id) {
                 $variation_key = '/wc/v3/products/'.$variation_id;
-                error_log('清除变体缓存'.$variation_key);
-                $this->clear_key_cache($variation_key, $this->cache_group.'_products');
-                $this->log_cache_action($variation_key, $this->cache_group.'_products', 'clear');
+                $this->clear_key_cache($variation_key, $this->cache_group_products);
             }
             //父产品
             $parent_key = '/wc/v3/products/'.$product_id;
-            $this->clear_key_cache($parent_key, $this->cache_group.'_products');
-            $this->log_cache_action($parent_key, $this->cache_group.'_products', 'clear');
-            $this->clear_group_cache($this->cache_group.'_products');
+            $this->clear_key_cache($parent_key, $this->cache_group_products);
         }
         elseif($product->is_type('variation')){
             //子产品
             $product_id = $product->get_id();
             $key = '/wc/v3/products/'.$product_id;
-            $this->clear_key_cache($key, $this->cache_group.'_products');
-            $this->log_cache_action($key, $this->cache_group.'_products', 'clear');
-            $this->clear_group_cache($this->cache_group.'_products');
+            $this->clear_key_cache($key, $this->cache_group_products);
         }
         elseif($product->is_type('simple')){
             //简单产品
             $key = '/wc/v3/products/'.$product_id;
-            $this->clear_key_cache($key, $this->cache_group.'_products');
-            $this->log_cache_action($key, $this->cache_group.'_products', 'clear');
-            $this->clear_group_cache($this->cache_group.'_products');
-        }else{
-            error_log('产品类型不对'.$product->get_sku());
+            $this->clear_key_cache($key, $this->cache_group_products);
         }
-
-        
     }
 
-
-
- 
     /**
      * 生成缓存键
      * @param object $request 请求对象
@@ -183,17 +157,16 @@ class Cache_Manager {
         
         // 根据路由确定缓存组
         if (strpos($route, '/wc/v3/products') !== false) {
-            return $this->cache_group.'_products';
+            return $this->cache_group_products;
         }
         else if (strpos($route, '/wc/v3/orders') !== false) {
-            return $this->cache_group.'_orders';
+            return $this->cache_group_orders;
         }
         
-         return 'default';
-       
-            
+        return 'default';
     }
-        /**
+
+    /**
      * 清除缓存键
      * @param string $key 缓存键
      */
@@ -201,7 +174,6 @@ class Cache_Manager {
         wp_cache_delete($key, $group);
     }
     
-
     /**
      * 清除缓存组
      * @param string $group 缓存组名称
@@ -209,27 +181,5 @@ class Cache_Manager {
     private function clear_group_cache($group) {
         // 直接清除整个缓存组
         wp_cache_flush_group($group);
-    }
-
-
-    /**
-     * 记录缓存操作
-     * @param string $cache_key 缓存键
-     * @param string $cache_group 缓存组名称
-     * @param string $action 操作类型
-     */
-    private function log_cache_action($cache_key, $cache_group, $action) {
-        global $wpdb;
-        
-        $wpdb->insert(
-            $wpdb->prefix . 'redis_cache_logs',
-            array(
-                'cache_key' => $cache_key,
-                'cache_group' => $cache_group,
-                'action' => $action,
-                'created_at' => current_time('mysql')
-            ),
-            array('%s', '%s', '%s', '%s')
-        );
     }
 } 

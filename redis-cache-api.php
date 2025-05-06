@@ -54,12 +54,6 @@ function redis_cache_api_init() {
     // 初始化缓存管理器
     $cache_manager = new Redis_Cache_API\Cache_Manager();
     $cache_manager->init();
-
-    // 初始化管理页面
-    if (is_admin()) {
-        $admin_page = new Redis_Cache_API\Admin_Page();
-        $admin_page->init();
-    }
 }
 add_action('plugins_loaded', 'redis_cache_api_init');
 
