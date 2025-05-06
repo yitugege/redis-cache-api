@@ -4,7 +4,7 @@
 
 ## 功能特点
 
-- 自动缓存 WooCommerce REST API 响应 ,目前缓存订单和产品的操作
+- 自动缓存 WooCommerce REST API 响应 ,目前缓存订单和产品的操作缓存/wc/v3/orders和/wc/v3/products2个路由
 - 支持产品、订单等 WooCommerce 数据的缓存
 - 智能缓存清理机制
 - 可配置的缓存过期时间
