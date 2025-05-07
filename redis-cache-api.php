@@ -1,15 +1,15 @@
 <?php
 /**
  * Plugin Name: Redis Cache API
- * Plugin URI: https://www.elegate.com.mx
+ * Plugin URI:  
  * Description: 使用 Redis 缓存 API 响应，提供更好的缓存管理功能
  * Version: 1.0.0
  * Author: Elegate
- * Author URI: https://www.elegate.com.mx
+ * Author URI: 
  * Text Domain: redis-cache-api
  * Domain Path: /languages
  * Requires at least: 5.0
- * Requires PHP: 7.2
+ * Requires PHP: 8.2
  */
 
 if (!defined('ABSPATH')) {
