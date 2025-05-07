@@ -4,7 +4,7 @@
  * Plugin URI:  
  * Description: 使用 Redis 缓存 API 响应，提供更好的缓存管理功能
  * Version: 1.0.0
- * Author: Elegate
+ * Author: yitu
  * Author URI: 
  * Text Domain: redis-cache-api
  * Domain Path: /languages
