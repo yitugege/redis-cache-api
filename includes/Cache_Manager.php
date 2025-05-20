@@ -252,6 +252,7 @@ class Cache_Manager {
       
     
         $key = '/wc/v3/orders/'.$order_id;
+        error_log('清除订单缓存: '.$key);
         $this->clear_key_cache($key, $this->cache_group_orders, $order_id);
       
     }
