@@ -68,6 +68,11 @@ class Cache_Manager {
         if ($cached_data !== false) {
             return $cached_data;
         }
+
+        if($cached_data['data']['status'] == 400){
+            error_log('缓存获取失败: '.$cache_key);
+            return $result;
+        }
         
         return $result;
     }
@@ -94,6 +99,10 @@ class Cache_Manager {
             $cache_data = $response;
         }    
 
+        if ($response->get_status() != 200) {
+            error_log('缓存设置失败: '.$cache_key);
+            return $response;
+        }
 
         // 设置缓存
         $result = wp_cache_set($cache_key, $cache_data, $cache_group, $this->default_expiration);
@@ -252,7 +261,6 @@ class Cache_Manager {
       
     
         $key = '/wc/v3/orders/'.$order_id;
-        error_log('清除订单缓存: '.$key);
         $this->clear_key_cache($key, $this->cache_group_orders, $order_id);
       
     }
