@@ -10,7 +10,7 @@ namespace Redis_Cache_API;
  */
 class Cache_Manager {
   
-    private $default_expiration = 3600; // 默认缓存时间1小时
+    private $default_expiration = WP_REDIS_MAXTTL; // 默认缓存时间1小时
     private $cache_group_products = 'cache_redis_api_products';
     private $cache_group_orders = 'cache_redis_api_orders';
 
