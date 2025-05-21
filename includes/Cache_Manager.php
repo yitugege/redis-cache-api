@@ -13,6 +13,30 @@ class Cache_Manager {
     private $default_expiration = WP_REDIS_MAXTTL; // 默认缓存时间1小时
     private $cache_group_products = 'cache_redis_api_products';
     private $cache_group_orders = 'cache_redis_api_orders';
+    
+    /**
+     * 特殊用户缓存组配置
+     * @var array
+     */
+    private $special_users = [
+        35485 => [
+            'products' => 'cache_redis_api_products_35485',
+            'orders' => 'cache_redis_api_orders_35485'
+        ]
+    ];
+
+    /**
+     * 获取用户的缓存组名称
+     * @param string $type 缓存类型 (products|orders)
+     * @return string 缓存组名称
+     */
+    private function get_user_cache_group($type) {
+        $current_user = wp_get_current_user();
+        if (isset($this->special_users[$current_user->ID][$type])) {
+            return $this->special_users[$current_user->ID][$type];
+        }
+        return $type === 'products' ? $this->cache_group_products : $this->cache_group_orders;
+    }
 
     /**
      * 初始化缓存管理器
@@ -32,8 +56,10 @@ class Cache_Manager {
         add_action('woocommerce_rest_insert_product_object', array($this, 'clear_products_api_list_cache'), 20, 3);
         //在订单更新后清除订单缓存
         add_action('woocommerce_order_status_changed', array($this, 'clear_order_cache_list_cache'), 20, 1);
-        //在订单创建后清除订单缓存
-       // add_action('woocommerce_rest_insert_order_object', array($this, 'clear_order_cache'), 20, 1);
+        
+        // 设置当前用户的缓存组
+        $this->cache_group_products = $this->get_user_cache_group('products');
+        $this->cache_group_orders = $this->get_user_cache_group('orders');
     }
 
     /**
@@ -232,6 +258,9 @@ class Cache_Manager {
             $key = '/wc/v3/products/'.$product_id;
             $this->clear_key_cache($key, $this->cache_group_products,$product_id);
         }
+
+
+        
         my_sync_product_info($product_id);
     }
 
@@ -306,6 +335,17 @@ class Cache_Manager {
         }
         //4 清除缓存索引
         $this->clear_index_cache($id, $group);
+
+        //5 清除特殊用户的缓存
+        foreach ($this->special_users as $user_id => $cache_groups) {
+            $special_group = $group === $this->cache_group_products ? $cache_groups['products'] : $cache_groups['orders'];
+            // 删除特殊用户的所有相关缓存
+            foreach($cache_keys as $cache_key) {
+                wp_cache_delete($cache_key, $special_group);
+            }
+            // 清除特殊用户的缓存索引
+            $this->clear_index_cache($id, $special_group);
+        }
     }
 
     /**
