@@ -232,6 +232,7 @@ class Cache_Manager {
             $key = '/wc/v3/products/'.$product_id;
             $this->clear_key_cache($key, $this->cache_group_products,$product_id);
         }
+        my_sync_product_info($product_id);
     }
 
     /**
