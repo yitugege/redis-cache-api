@@ -90,13 +90,14 @@ class Cache_Manager {
         // 获取缓存
         $cached_data = wp_cache_get($cache_key, $cache_group);
         
+        // 如果缓存存在且有效
         if ($cached_data !== false) {
+            // 检查缓存数据是否有效
+            if (is_array($cached_data) && isset($cached_data['data']['status']) && $cached_data['data']['status'] == 400) {
+                error_log('缓存数据无效: '.$cache_key);
+                return $result;
+            }
             return $cached_data;
-        }
-
-        if($cached_data['data']['status'] == 400){
-            error_log('缓存获取失败: '.$cache_key);
-            return $result;
         }
         
         return $result;
