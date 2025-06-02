@@ -13,7 +13,6 @@ class Cache_Manager {
     private $default_expiration = WP_REDIS_MAXTTL; // 默认缓存时间1小时
     private $cache_group_products = 'cache_redis_api_products';
     private $cache_group_orders = 'cache_redis_api_orders';
-    
     /**
      * 特殊用户缓存组配置
      * @var array
@@ -220,6 +219,9 @@ class Cache_Manager {
         else if(strpos($route, '/wc/v3/orders') !== false){
             return true;
         }
+        else if(strpos($route, '/wc/v3/elegate-products') !== false){
+            return true;
+        }
         else{
             return false;
         }
@@ -310,6 +312,9 @@ class Cache_Manager {
         }
         else if (strpos($route, '/wc/v3/orders') !== false) {
             return $this->cache_group_orders;
+        }
+        else if (strpos($route, '/wc/v3/elegate-products') !== false) {
+            return $this->cache_group_products;
         }
         
         return 'default';
