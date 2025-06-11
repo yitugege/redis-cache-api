@@ -13,6 +13,20 @@ class Cache_Manager {
     private $default_expiration = WP_REDIS_MAXTTL; // 默认缓存时间1小时
     private $cache_group_products = 'cache_redis_api_products';
     private $cache_group_orders = 'cache_redis_api_orders';
+    private $user_id_array = ['35485','35486'];  // 用户id数组用于限制api访问权限
+  
+
+    /**
+     * 获取用户的缓存组名称
+     * @param string $type 缓存类型 (products|orders)
+     * @return string 缓存组名称
+     */
+    private function get_user_cache_group($type) {
+        $current_user = wp_get_current_user();
+        $this->cache_group_products = 'cache_redis_api_products_'.$current_user->ID;
+        $this->cache_group_orders = 'cache_redis_api_orders_'.$current_user->ID;
+        return $type === 'products' ? $this->cache_group_products : $this->cache_group_orders;
+    }
 
     /**
      * 初始化缓存管理器
@@ -32,18 +46,68 @@ class Cache_Manager {
         add_action('woocommerce_rest_insert_product_object', array($this, 'clear_products_api_list_cache'), 20, 3);
         //在订单更新后清除订单缓存
         add_action('woocommerce_order_status_changed', array($this, 'clear_order_cache_list_cache'), 20, 1);
-        //在订单创建后清除订单缓存
-       // add_action('woocommerce_rest_insert_order_object', array($this, 'clear_order_cache'), 20, 1);
+        
+        // 设置当前用户的缓存组
+        $this->cache_group_products = $this->get_user_cache_group('products');
+        $this->cache_group_orders = $this->get_user_cache_group('orders');
     }
 
     /**
      * 注册缓存相关的钩子
      */
     public function register_cache_hooks() {
+        // 限制API访问权限
+        add_filter('rest_pre_dispatch', array($this, 'check_permission'), 10, 3);
         // 在API请求前检查缓存
-        add_filter('rest_pre_dispatch', array($this, 'check_cache'), 10, 3);
+        add_filter('rest_pre_dispatch', array($this, 'check_cache'), 99, 3);
         // 在API响应后保存缓存
-        add_filter('rest_post_dispatch', array($this, 'save_cache'), 10, 3);
+        add_filter('rest_post_dispatch', array($this, 'save_cache'), 99, 3);
+    }
+
+    /**
+     * 检查API访问权限
+     * @param mixed $result 请求结果
+     * @param object $server 服务器对象
+     * @param object $request 请求对象
+     * @return mixed 请求结果
+     */
+    public function check_permission($result, $server, $request) {
+        // 如果已经是错误响应，直接返回
+        if (is_wp_error($result)) {
+            return $result;
+        }
+        //获取当前用户
+        $current_user = wp_get_current_user();
+        if(in_array($current_user->ID, $this->user_id_array)){
+            // 获取请求路径
+            $route = $request->get_route();
+
+            // 获取请求方法
+            $method = $request->get_method();
+            if($method === 'GET'){
+                if(strpos($route, '/wc/v3/products') !== false || strpos($route, '/wc/v3/elegate-products') !== false){
+                    return $result;
+                }else{
+                    status_header(403);
+                    header('Content-Type: application/json');
+                    die(json_encode([
+                        'code' => 'rest_forbidden',
+                        'message' => 'you have no permission',
+                        'data' => ['status' => 403]
+                    ]));
+                }
+            }else{
+                status_header(403);
+                header('Content-Type: application/json');
+                die(json_encode([
+                    'code' => 'rest_forbidden',
+                    'message' => 'you have no permission',
+                    'data' => ['status' => 403]
+                ]));
+            }
+        }else{
+            return $result;
+        }
     }
 
     /**
@@ -65,13 +129,14 @@ class Cache_Manager {
         // 获取缓存
         $cached_data = wp_cache_get($cache_key, $cache_group);
         
+        // 如果缓存存在且有效
         if ($cached_data !== false) {
+            // 检查缓存数据是否有效
+            if (is_array($cached_data) && isset($cached_data['data']['status']) && $cached_data['data']['status'] == 400) {
+                error_log('缓存数据无效: '.$cache_key);
+                return $result;
+            }
             return $cached_data;
-        }
-
-        if($cached_data['data']['status'] == 400){
-            error_log('缓存获取失败: '.$cache_key);
-            return $result;
         }
         
         return $result;
@@ -194,6 +259,9 @@ class Cache_Manager {
         else if(strpos($route, '/wc/v3/orders') !== false){
             return true;
         }
+        else if(strpos($route, '/wc/v3/elegate-products') !== false){
+            return true;
+        }
         else{
             return false;
         }
@@ -232,6 +300,9 @@ class Cache_Manager {
             $key = '/wc/v3/products/'.$product_id;
             $this->clear_key_cache($key, $this->cache_group_products,$product_id);
         }
+
+
+        
         my_sync_product_info($product_id);
     }
 
@@ -282,6 +353,9 @@ class Cache_Manager {
         else if (strpos($route, '/wc/v3/orders') !== false) {
             return $this->cache_group_orders;
         }
+        else if (strpos($route, '/wc/v3/elegate-products') !== false) {
+            return $this->cache_group_products;
+        }
         
         return 'default';
     }
@@ -306,6 +380,8 @@ class Cache_Manager {
         }
         //4 清除缓存索引
         $this->clear_index_cache($id, $group);
+
+       
     }
 
     /**
