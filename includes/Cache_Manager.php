@@ -91,7 +91,7 @@ class Cache_Manager {
             // 获取请求方法
             $method = $request->get_method();
             if($method === 'GET'){
-                if(strpos($route, '/wc/v3/products') !== false || strpos($route, '/wc/v3/elegate-products') !== false){
+                if(strpos($route, '/wc/v3/products') !== false || strpos($route, '/wc/v3/elegate/products') !== false){
                     return $result;
                 }else{
                      // 返回标准 WP_REST 错误响应
