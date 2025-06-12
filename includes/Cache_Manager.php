@@ -14,6 +14,7 @@ class Cache_Manager {
     private $cache_group_products = 'cache_redis_api_products';
     private $cache_group_orders = 'cache_redis_api_orders';
     private $user_id_array = ['35485','35486'];  // 用户id数组用于限制api访问权限
+    
   
 
     /**
@@ -92,7 +93,11 @@ class Cache_Manager {
             // 获取请求方法
             $method = $request->get_method();
             if($method === 'GET'){
-                if(strpos($route, '/wc/v3/products') !== false || strpos($route, '/v3/elegate/products') !== false){
+                $allowed_routes = array(
+                    '/wc/v3/products',
+                    '/v3/elegate/products'
+                );
+                if(array_filter($allowed_routes, function($path) use ($route) { return strpos($route, $path) !== false; })){
                     return $result;
                 }else{
                      // 返回标准 WP_REST 错误响应
