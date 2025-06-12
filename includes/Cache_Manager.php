@@ -78,8 +78,12 @@ class Cache_Manager {
             return $result;
         }
         // 检查用户是否登录
-        $this->is_user_logged_in();
-       
+        if(!is_user_logged_in()){
+            // 返回标准 WP_REST 错误响应
+            $response = new \WP_Error('rest_forbidden', 'you have no permission', ['status' => 403]);
+            return $response;
+        }
+        $current_user = wp_get_current_user();
         if(in_array($current_user->ID, $this->user_id_array)){
             // 获取请求路径
             $route = $request->get_route();
@@ -112,8 +116,7 @@ class Cache_Manager {
      * @return mixed 缓存结果或原始结果
      */
     public function check_cache($result, $server, $request) {
-        // 检查用户是否登录
-        $this->is_user_logged_in();
+       
         // 只缓存GET请求和路由以/wc/v3/products开头的请求,或者以/wc/v3/elegate-products开头的请求,或者以/wc/v3/orders开头的请求
         if(!$this->is_route_cache_api($request) || $request->get_method() !== 'GET'){
             return $result;
@@ -154,8 +157,7 @@ class Cache_Manager {
      * @return mixed 响应结果
      */
     public function save_cache($response, $server, $request) {
-        // 检查用户是否登录
-        $this->is_user_logged_in();
+        
         // 检查路由是否需要缓存
         if(!$this->is_route_cache_api($request) || $request->get_method() !== 'GET'){
             return $response;
@@ -246,19 +248,6 @@ class Cache_Manager {
         return $response;
     }
 
-    /**
-     * 检查用户是否有权限登录,如果未登录,则返回403错误
-     * @return bool 如果用户登录返回true,否则返回false
-     */
-    public function is_user_logged_in(){
-        // 如果用户未登录，直接返回原始结果
-        if (!is_user_logged_in()){
-            // 返回标准 WP_REST 错误响应
-            $response = new \WP_Error('rest_forbidden', 'you have no access to this api', ['status' => 403]);
-            return $response;
-        }
-        return true;
-    }
 
     //定义api路由,用于判断是否需要缓存
     /**
