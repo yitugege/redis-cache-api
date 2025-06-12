@@ -37,15 +37,15 @@ class Cache_Manager {
         add_action('rest_api_init', array($this, 'register_cache_hooks'));
       
         // 清除产品缓存
-        add_action('woocommerce_update_product', array($this, 'clear_product_cache'), 10, 1);
+        add_action('woocommerce_update_product', array($this, 'clear_product_cache'), 99, 1);
         // 清除产品缓存
-        add_action('woocommerce_product_quick_edit_save', array($this, 'clear_product_cache'), 10, 1);
+       // add_action('woocommerce_product_quick_edit_save', array($this, 'clear_product_cache'), 99, 1);
         // 清除变体产品缓存
-        add_action('woocommerce_update_product_variation', array($this, 'clear_product_cache'), 10, 1);
+       // add_action('woocommerce_update_product_variation', array($this, 'clear_product_cache'), 99, 1);
         // 在POST API成功后清除产品列表缓存
-        add_action('woocommerce_rest_insert_product_object', array($this, 'clear_products_api_list_cache'), 20, 3);
+        add_action('woocommerce_rest_insert_product_object', array($this, 'clear_products_api_list_cache'), 99, 3);
         //在订单更新后清除订单缓存
-        add_action('woocommerce_order_status_changed', array($this, 'clear_order_cache_list_cache'), 20, 1);
+        add_action('woocommerce_order_status_changed', array($this, 'clear_order_cache_list_cache'), 99, 1);
         
         // 设置当前用户的缓存组
         $this->cache_group_products = $this->get_user_cache_group('products');
@@ -59,7 +59,7 @@ class Cache_Manager {
         // 限制API访问权限
         add_filter('rest_pre_dispatch', array($this, 'check_permission'), 10, 3);
         // 在API请求前检查缓存
-        add_filter('rest_pre_dispatch', array($this, 'check_cache'), 99, 3);
+        add_filter('rest_pre_dispatch', array($this, 'check_cache'), 10, 3);
         // 在API响应后保存缓存
         add_filter('rest_post_dispatch', array($this, 'save_cache'), 99, 3);
     }
@@ -73,6 +73,7 @@ class Cache_Manager {
      * @return mixed 请求结果
      */
     public function check_permission($result, $server, $request) {
+        error_log('check_permission');
         // 如果已经是错误响应，直接返回
         if (is_wp_error($result)) {
             return $result;
@@ -91,7 +92,7 @@ class Cache_Manager {
             // 获取请求方法
             $method = $request->get_method();
             if($method === 'GET'){
-                if(strpos($route, '/wc/v3/products') !== false || strpos($route, '/wc/v3/elegate/products') !== false){
+                if(strpos($route, '/wc/v3/products') !== false || strpos($route, '/v3/elegate/products') !== false){
                     return $result;
                 }else{
                      // 返回标准 WP_REST 错误响应
@@ -117,7 +118,7 @@ class Cache_Manager {
      */
     public function check_cache($result, $server, $request) {
        
-        // 只缓存GET请求和路由以/wc/v3/products开头的请求,或者以/wc/v3/elegate-products开头的请求,或者以/wc/v3/orders开头的请求
+        // 只缓存GET请求和路由以/wc/v3/products开头的请求,或者以/wc/v3/elegate/products开头的请求,或者以/wc/v3/orders开头的请求
         if(!$this->is_route_cache_api($request) || $request->get_method() !== 'GET'){
             return $result;
         }
@@ -269,7 +270,7 @@ class Cache_Manager {
         else if(strpos($route, '/wc/v3/orders') !== false){
             return true;
         }
-        else if(strpos($route, '/wc/v3/elegate-products') !== false){
+        else if(strpos($route, '/v3/elegate/products') !== false){
             return true;
         }
         else{
@@ -311,9 +312,6 @@ class Cache_Manager {
             $this->clear_key_cache($key, $this->cache_group_products,$product_id);
         }
 
-
-        
-        my_sync_product_info($product_id);
     }
 
     /**
@@ -363,7 +361,7 @@ class Cache_Manager {
         else if (strpos($route, '/wc/v3/orders') !== false) {
             return $this->cache_group_orders;
         }
-        else if (strpos($route, '/wc/v3/elegate-products') !== false) {
+        else if (strpos($route, '/v3/elegate/products') !== false) {
             return $this->cache_group_products;
         }
         
