@@ -94,8 +94,7 @@ class Cache_Manager {
             $method = $request->get_method();
             if($method === 'GET'){
                 $allowed_routes = array(
-                    '/wc/v3/products',
-                    '/v3/elegate/products'
+                    '/wc/v3/products'
                 );
                 if(array_filter($allowed_routes, function($path) use ($route) { return strpos($route, $path) !== false; })){
                     return $result;
